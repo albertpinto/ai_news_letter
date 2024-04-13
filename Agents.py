@@ -1,5 +1,16 @@
 import os
 import autogen
+
+from langchain_community.document_loaders import AsyncChromiumLoader
+from langchain_community.document_transformers import BeautifulSoupTransformer
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain.chains import create_extraction_chain
+from bs4 import BeautifulSoup
+import os
+import pprint
+from langchain_openai import ChatOpenAI
+from scraping_utils import extract, scrape_with_playwright
+
 class Agents:
     def __init__(self, config_list, llm_config, user_proxy: autogen.UserProxyAgent,assistant:autogen.AssistantAgent,):
         # Define configuration list for autogen models
@@ -48,22 +59,29 @@ def main():
     )
     agents = Agents(user_proxy=user_proxy, assistant=assistant, config_list=config_list, llm_config=llm_config)
 
+    # AI Topic Generation task
     
-    # AI Topic Gneneration Task
-    task = """
-    Give me top 5 topics in AI that are trending in 2024 in this article https://www.techtarget.com/searchenterpriseai/tip/9-top-AI-and-machine-learning-trends and store it in a file named high_level_topics.txt.
-    """
+    urls = ["https://news.microsoft.com/ai/#top-ai-news"]
+    schema = {
+    "properties": {
+        "news_article_title": {"type": "string"},
+        "news_article_summary": {"type": "string"},
+    },
+    "required": ["news_article_title", "news_article_summary"],
+    }
 
-    # Initiate chat with the assistant
-    agents.user_proxy.initiate_chat(
-        agents.assistant,
-        message=task,
-    )
+    extracted_content = scrape_with_playwright(urls, schema=schema)
+    print(extracted_content)
 
     # AI Resource genration task
-    task = """
-    Print out the 5 topics list in the file high_level_topics.txt.
+    task= """
+    Read  the variable{extracted_content} and write it to a file.
     """
+
+    # # AI Resource genration task
+    # task = """
+    # Print out the list in the file high_level_topics.txt.
+    # """
 
     # Initiate chat with the assistant
     agents.user_proxy.initiate_chat(
